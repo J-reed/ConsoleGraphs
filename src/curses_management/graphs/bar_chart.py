@@ -93,14 +93,27 @@ class BarChart:
         raise Exception(f"[ERRORCODE: fa7259ed-d6a4-4683-b2d0-6b2d604461ed] Could not draw bar chart. {self.__repr__()}")
     
     def draw_title(self, parent_pad: window, x: int, y: int, title: list[str], justification: TextJustification, padding: TextPadding) -> window:
+        
+        longest_line: int = max([len(line) for line in title])
+        
         title_pad: window = parent_pad.subpad(
-            nlines=padding.padding_top + len(title) + padding.padding_bottom,
-            ncols=padding.padding_left + max([len(line) for line in title]) + padding.padding_right,
-            begin_x=x,
-            begin_y=y
+            padding.padding_top + len(title) + padding.padding_bottom,
+            padding.padding_left + longest_line  + padding.padding_right,
+            x,
+            y
         )
 
-        # TODO: Add text justified (and padded) title text to title_pad
+        justification_func = {
+            TextJustification.LEFT : lambda string: string.ljust(longest_line, " "),
+            TextJustification.RIGHT : lambda string: string.rjust(longest_line, " "),
+            TextJustification.CENTRE : lambda string: string.center(longest_line, " "),
+        }
+
+        justified_title: list[str] = list(map(lambda line: justification_func[justification](line), title))
+
+        for line_no in range(len(justified_title)):
+            title_line = justified_title[line_no]
+            title_pad.addnstr(padding.padding_top + line_no, 0, title_line, self.config.title_row_length_max)
 
         return title_pad
 

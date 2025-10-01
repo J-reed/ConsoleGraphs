@@ -14,6 +14,8 @@ def initialise_screen() -> window:
     curses.cbreak()
     stdscr.keypad(True)
 
+    stdscr.refresh()
+
     return stdscr
 
 def new_window(height: int, width: int, x: int, y: int) -> window:
