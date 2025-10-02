@@ -1,10 +1,12 @@
 from dataclasses import dataclass
 
 @dataclass()
-class PadVisibilityCoordsStruct:
-    pad_top_left_x: int
-    pad_top_left_y: int
-    window_top_left_x: int
-    window_top_left_y: int
-    window_bottom_right_x: int
-    window_bottom_right_y: int
+class Coord:
+    x: int
+    y: int
+
+@dataclass()
+class PadVisibilityCoords:
+    starting_position_in_pad: Coord
+    window_top_left: Coord
+    window_bottom_right: Coord
