@@ -4,13 +4,33 @@ from curses_management.curses_manager import CursesManager
 from curses_management.graphs.bar_chart import BarChart, BarChartAxis, BarChartConfiguration, BarChartOrientation
 from curses_management.text.text_styling import TextJustification, TextPadding
 from curses_management.curses_dataclasses import PadVisibilityCoords, Coord
+import logging
 
-def main(stdscr):
+logging.basicConfig(filename="console_graph.log",
+                    filemode='a',
+                    format='%(asctime)s,%(msecs)03d %(name)s %(levelname)s %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S',
+                    level=logging.DEBUG)
+
+logging.info("-"*120)
+logging.info("Running ConsoleGraphLogs")
+
+logger = logging.getLogger('ConsoleGraphLogs')
+
+def main(stdscr: window):
 
     stdscr.clear()
     stdscr.refresh()
     
-    curses_box_test(stdscr)
+    stdscr.resize(50,50)
+
+    logger.debug(f" Screen size (y,x): {stdscr.getmaxyx()}")
+
+    stdscr.addstr(0,0, f"{stdscr.getmaxyx()}")
+    stdscr.refresh()
+    stdscr.getch()
+    # curses_box_test(stdscr)
+    box_moves_across_screen_column_by_column_row_by_row(stdscr=stdscr)
 
     # whole_screen: window = curses_manager.initialise_screen()
 
@@ -76,6 +96,26 @@ def curses_box_test(stdscr: window):
                     
                     
                     stdscr.getch() 
+
+def box_moves_across_screen_column_by_column_row_by_row(stdscr: window, pad_width: int = 3, pad_height: int = 3, row_length: int = 5, no_rows: int = 10):
+    stdscr.clear()
+    stdscr.refresh()
+
+    start_coord = Coord(1,1)
+
+    
+    box: window = curses.newpad(pad_height,pad_width) 
+    logger.debug(f"{start_coord}, {row_length}")
+    for y in range(start_coord.y, start_coord.y+ no_rows):
+        for x in range(start_coord.x, start_coord.x + row_length):
+            logger.debug(f"x: {x}, y: {y}")
+            stdscr.clear()
+            stdscr.addstr(0,0, f"({x},{y})")
+            stdscr.refresh()
+
+            box.box()
+            box.refresh(0,0,y,x,y+pad_height, x+pad_width)
+            stdscr.getch()
 
 if __name__ == "__main__":
     # This wrapper ensures that if the application crashes unexpectedly
