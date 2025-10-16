@@ -1,3 +1,5 @@
+
+from __future__ import annotations
 import logging
 
 logger = logging.getLogger('ConsoleGraphLogs')
@@ -6,6 +8,8 @@ logger = logging.getLogger('ConsoleGraphLogs')
 from dataclasses import dataclass
 from curses import window
 import curses
+
+from typing import Any
 
 from .better_curses.pad import Pad
 from .utils.utils import Coord
@@ -104,3 +108,93 @@ def barchart_data_parser(barchart_data: dict) -> BarChartData:
             background_colour=barchart_data["styling"]["background_colour"],
         )
     )
+
+class InvalidBarChartDataException(Exception): ...
+class BarChartBackground:
+    def __init__():
+        pass
+
+class BarChartBar:
+    def __init__():
+        pass
+class BarChart:
+
+    def __init__(self, barchart_data: BarChartData):
+
+        if not isinstance(barchart_data, BarChart):
+            raise InvalidBarChartDataException("[ERRORCODE: d68b50bc-d987-4fd7-b130-a4f2c54997a1] BarCharts must be initialised with BarChartData")
+
+        self.barchart_data: BarChartData = barchart_data
+
+        self.bars: list[BarChartBar] = []
+        self.background: BarChartBackground = BarChartBackground()
+
+    @staticmethod
+    def create_barchart(barchart_data: dict) -> BarChart:
+
+        if barchart_data.get("bar_lengths") is None:
+            raise Exception(f"[ERRORCODE a04574b0-2bd2-4e8f-93a1-b2e61ca7f284] Barchart data did not supply a 'bar_lengths' field. Data provided: {barchart_data}")
+        
+        if not isinstance(barchart_data.get("bar_lengths"), list):
+            raise Exception(f"[ERRORCODE 2605c9f2-7af5-4f82-86f5-b8c51fbb8ba6] Barchart data field 'bar_lengths' must be a list of integers. Data provided: {barchart_data}") 
+
+        
+        for item in barchart_data.get("bar_lengths"):
+            if not isinstance(item, int):
+                raise Exception(f"[ERRORCODE 5a294cbf-4ece-45e3-b8c3-81dfb890e7e3] Barchart data field 'bar_lengths' must be a list of integers. Data provided: {barchart_data}") 
+
+
+        if barchart_data.get("styling") is None:
+            raise Exception(f"[ERRORCODE db456fba-b917-449c-9fa5-c04a84fc3602] Barchart data did not supply a 'styling' field. Data provided: {barchart_data}")
+        
+        if barchart_data.get("styling").get("bar_colour") is None:
+            raise Exception(f"[ERRORCODE ea43f215-6a86-4829-b3fa-8f3fad712a13] Barchart data did not supply a 'bar_colour' field in its 'styling' object. Data provided: {barchart_data}")
+        
+        if barchart_data.get("styling").get("background_colour") is None:
+            raise Exception(f"[ERRORCODE ecc0ec2b-ab87-4cbf-8121-0937e433fc21] Barchart data did not supply a 'background_colour' field in its 'styling' object. Data provided: {barchart_data}")
+        
+        supported_colours = {
+            "black" : curses.COLOR_BLACK, 
+            "blue": curses.COLOR_BLUE, 
+            "cyan": curses.COLOR_CYAN,
+            "green": curses.COLOR_GREEN,
+            "magenta": curses.COLOR_MAGENTA,
+            "red": curses.COLOR_RED,
+            "white": curses.COLOR_WHITE,
+            "yellow": curses.COLOR_YELLOW
+        }
+
+        if supported_colours.get(barchart_data.get("styling").get("bar_colour")) is None:
+            raise Exception(f"[ERRORCODE d654cc66-8acd-4fb2-93f5-7075583cb9a3] The colour provided in the supplied barchart data for the 'bar_colour' field in its 'styling' object is invalid. Bar colour provided: {barchart_data.get("styling").get("bar_colour")}. Supported colours: {supported_colours.keys()}")
+    
+        if supported_colours.get(barchart_data.get("styling").get("background_colour")) is None:
+            raise Exception(f"[ERRORCODE 170d9db6-3cac-438f-816e-c4ea02c05677] The colour provided in the supplied barchart data for the 'background_colour' field in its 'styling' object is invalid. Background colour provided: {barchart_data.get("styling").get("background_colour")}. Supported colours: {supported_colours.keys()}")
+        
+        BarChart(barchart_data=BarChartData(
+            bar_lengths = barchart_data["bar_lengths"],
+            styling = BarChartStyling(
+                bar_colour=barchart_data["styling"]["bar_colour"],
+                background_colour=barchart_data["styling"]["background_colour"],
+            )
+        ))
+
+
+class BarChartBuilder:
+
+    def __init__(self):
+        self.bars: dict[str,BarChartBar] = dict()
+
+    def add_bar(self, bar_id: str):
+        self.bars[bar_id]=BarChartBar()
+
+    def set_bar_styling(self, bar_id: str, attribute: str, value: Any):
+        bar: BarChartBar = self.bars.get(bar_id)
+
+    def set_background(self):
+        self.background: BarChartBackground = BarChartBackground()
+
+
+    def build(self) -> BarChart:
+
+        barchart_data: BarChartData = BarChartData()
+        return BarChart(barchart_data)
