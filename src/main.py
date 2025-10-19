@@ -1,5 +1,6 @@
 import logging
 import pathlib
+import curses
 
 logging.basicConfig(filename=f"{pathlib.Path(__file__).parent.resolve()}/console_graph.log",
                     filemode='a',
@@ -9,7 +10,7 @@ logging.basicConfig(filename=f"{pathlib.Path(__file__).parent.resolve()}/console
 
 from curses import wrapper, window
 from .utils.utils import Coord
-from .barchart import draw_bar_chart, barchart_data_parser, BarChartData
+from .barchart import draw_bar_chart, barchart_data_parser, BarChart, BarChartBuilder
 
 logger = logging.getLogger('ConsoleGraphLogs')
 logger.info("-"*120)
@@ -32,34 +33,53 @@ def main(stdscr: window):
     stdscr.refresh()
 
 
-    barchart1_data = {
-        "bar_lengths" : [5,2,3,1,10,15,12], 
-        "styling": {
-            "bar_colour" : "blue",
-            "background_colour" : "black"
-        }
-    }
+    # barchart1_data = {
+    #     "bar_lengths" : [5,2,3,1,10,15,12], 
+    #     "styling": {
+    #         "bar_colour" : "blue",
+    #         "background_colour" : "black"
+    #     }
+    # }
 
     
 
-    barchart2_data = {
-        "bar_lengths" : [5,14,12,15,13,1,4], 
-        "styling": {
-            "bar_colour" : "red",
-            "background_colour" : "cyan"
-        }
-    }
+    # barchart2_data = {
+    #     "bar_lengths" : [5,14,12,15,13,1,4], 
+    #     "styling": {
+    #         "bar_colour" : "red",
+    #         "background_colour" : "cyan"
+    #     }
+    # }
 
-    bc1_d: BarChartData = barchart_data_parser(barchart1_data)
-    bc2_d: BarChartData = barchart_data_parser(barchart2_data)
+    # bc1_d: BarChartData = barchart_data_parser(barchart1_data)
+    # bc2_d: BarChartData = barchart_data_parser(barchart2_data)
 
 
-    draw_bar_chart(bar_lengths = bc1_d.bar_lengths, bar_chart_position=Coord(0,1))
-    stdscr.getch()
-    draw_bar_chart(bar_lengths = bc2_d.bar_lengths, bar_chart_position=Coord(17,1))
-    stdscr.getch()
+    # draw_bar_chart(bar_lengths = bc1_d.bar_lengths, bar_chart_position=Coord(0,1))
+    # stdscr.getch()
+    # draw_bar_chart(bar_lengths = bc2_d.bar_lengths, bar_chart_position=Coord(17,1))
+    # stdscr.getch()
 
+    barcharts: list[BarChart] = []
+
+    barchart_builder: BarChartBuilder = BarChartBuilder()
+    barchart_builder.set_background()
+    for length in [5,2,3,1,10,15,12]:
+        barchart_builder.add_bar(length)
     
+    barcharts.append(barchart_builder.build())
+
+    barchart_builder_2: BarChartBuilder = BarChartBuilder()
+    barchart_builder_2.set_background(colour=curses.RED)
+    for length in [5,14,12,15,13,1,4]:
+        barchart_builder_2.add_bar(length, colour=curses.COLOR_CYAN)
+    
+    barcharts.append(barchart_builder.build())
+
+    for barchart in barcharts:
+        barchart.render()
+        stdscr.getch()
+
 
 if __name__ == "__main__":
     # This wrapper ensures that if the application crashes unexpectedly

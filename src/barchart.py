@@ -18,6 +18,8 @@ from .utils.utils import Coord
 class BarChartStyling:
     bar_colour: str
     background_colour: str
+    bar_spacing: int
+    bar_width: int
 
 
 @dataclass()
@@ -111,23 +113,68 @@ def barchart_data_parser(barchart_data: dict) -> BarChartData:
 
 class InvalidBarChartDataException(Exception): ...
 class BarChartBackground:
-    def __init__():
-        pass
+    def __init__(self, parent: BarChart, colour):
+        self.colour = colour
+        self.parent: BarChart = parent
+
+    def render(self):
+        bar_chart_curses_pad:window = self.parent.bar_chart.get_curses_pad()
+        bar_chart_curses_pad.box()
+
+        colour = self.colour if self.colour else self.parent.styling.background_colour
+
+        bar_chart_curses_pad.bkgd(' ', colour | curses.A_BOLD)
+        
 
 class BarChartBar:
-    def __init__():
-        pass
+    def __init__(self, length: int, parent: BarChart, colour):
+        self.length: int = length
+        self.colour = colour
+        self.parent: BarChart = parent
+
+    def set_colour(self, colour):
+        self.colour = colour
+
+    def render(self, index: int):
+        self.bar: Pad = Pad(
+            self.parent.barchart_data.styling.bar_width,
+            self.length,
+            relative_display_top_left_corner_coord=Coord(self.parent.original_offset.x +(self.parent.styling.bar_spacing +self.parent.styling.bar_width) * index, self.parent.bar_chart.display_height - self.length - self.parent.original_offset.y),
+            parent_pad=self.parent.bar_chart
+        )
+
+        curses_bar_pad: window = self.bar.get_curses_pad()
+        curses_bar_pad.box()
+        curses_bar_pad.bkgd(' ', self.colour | curses.A_BOLD)
+        self.bar._update()
+        
+
 class BarChart:
 
-    def __init__(self, barchart_data: BarChartData):
+    def __init__(self, bars: list[BarChartBar], styling: BarChartStyling, original_offset: Coord = Coord(1,1), bar_chart_position: Coord = Coord(0,0)):
 
-        if not isinstance(barchart_data, BarChart):
-            raise InvalidBarChartDataException("[ERRORCODE: d68b50bc-d987-4fd7-b130-a4f2c54997a1] BarCharts must be initialised with BarChartData")
+        if not isinstance(styling, BarChartStyling):
+            raise InvalidBarChartDataException("[ERRORCODE: d68b50bc-d987-4fd7-b130-a4f2c54997a1] BarCharts must be initialised with BarChartStyling")
 
-        self.barchart_data: BarChartData = barchart_data
+        self.styling: BarChartStyling = styling
 
-        self.bars: list[BarChartBar] = []
+        self.bars: list[BarChartBar] = bars
         self.background: BarChartBackground = BarChartBackground()
+
+        self.original_offset: Coord = original_offset
+        self.bar_chart_position: Coord = bar_chart_position
+
+    def render(self):
+        
+        self.bar_chart: Pad = Pad(
+            self.original_offset.x + (self.barchart_data.styling.bar_spacing +self.barchart_data.styling.bar_width) * len(self.bars), 
+            max(self.bars)+self.original_offset.y+1,
+            relative_display_top_left_corner_coord=self.bar_chart_position
+        )
+
+        self.background.render(pad=self.bar_chart, default_colour=self.barchart_data.styling.background_colour)
+        for index, bar in enumerate(self.bars):
+            bar.render(index, default_colour = self.barchart_data.styling.bar_colour)
 
     @staticmethod
     def create_barchart(barchart_data: dict) -> BarChart:
@@ -182,19 +229,26 @@ class BarChart:
 class BarChartBuilder:
 
     def __init__(self):
-        self.bars: dict[str,BarChartBar] = dict()
+        self.bars: list[BarChartBar] = dict()
 
-    def add_bar(self, bar_id: str):
-        self.bars[bar_id]=BarChartBar()
+    def add_bar(self, length: int, colour: Any | None = None):
+        self.bars.append(BarChartBar(length=length, colour=colour))
 
-    def set_bar_styling(self, bar_id: str, attribute: str, value: Any):
-        bar: BarChartBar = self.bars.get(bar_id)
+    def set_background(self, colour: Any | None = None):
+        self.background_colour: BarChartBackground = BarChartBackground(colour)
 
-    def set_background(self):
-        self.background: BarChartBackground = BarChartBackground()
+    def set_position_in_display(self, position_in_display: Coord):
+        self.position_in_display: Coord = position_in_display
 
+    def set_render_offset_within_frame(self, offset: Coord):
+        self.offset: Coord = offset
 
     def build(self) -> BarChart:
 
-        barchart_data: BarChartData = BarChartData()
-        return BarChart(barchart_data)
+        styling: BarChartStyling = BarChartStyling(
+            bar_colour=curses.COLOR_BLUE,
+            background_colour=curses.COLOR_BLACK,
+            bar_spacing=1,
+            bar_width=1
+        )
+        return BarChart(self.bars, styling, self.offset, self.position_in_display)
