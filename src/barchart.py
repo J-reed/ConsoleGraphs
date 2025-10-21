@@ -16,10 +16,10 @@ from .utils.utils import Coord
 
 @dataclass
 class BarChartStyling:
-    bar_colour: str
-    background_colour: str
-    bar_spacing: int
-    bar_width: int
+    bar_colour: int = curses.COLOR_BLUE
+    background_colour: int = curses.COLOR_BLACK
+    bar_spacing: int = 1
+    bar_width: int = 1
 
 
 @dataclass()
@@ -28,7 +28,6 @@ class BarChartData:
     styling: BarChartStyling
 
 
-# Todo: Update this method to use barchart data objects
 def draw_bar_chart(bar_lengths: list[int], bar_width: int =1, bar_spacing: int=1, original_offset: Coord = Coord(1,1), bar_chart_position: Coord = Coord(0,0)):
     curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_BLUE)
 
@@ -112,12 +111,20 @@ def barchart_data_parser(barchart_data: dict) -> BarChartData:
     )
 
 class InvalidBarChartDataException(Exception): ...
+class BarChartBackgroundParentNotSetException(Exception): ...
+class BarChartBarParentNotSetException(Exception): ...
 class BarChartBackground:
-    def __init__(self, parent: BarChart, colour):
+    def __init__(self, colour):
         self.colour = colour
+
+    def set_parent(self, parent: BarChart):
         self.parent: BarChart = parent
 
     def render(self):
+
+        if not self.parent:
+            raise BarChartBackgroundParentNotSetException("[ERRORCODE: e34beed2-955a-4e24-9151-44cdc615406f] You must set the parent of this Background Object before rendering.")
+
         bar_chart_curses_pad:window = self.parent.bar_chart.get_curses_pad()
         bar_chart_curses_pad.box()
 
@@ -127,21 +134,31 @@ class BarChartBackground:
         
 
 class BarChartBar:
-    def __init__(self, length: int, parent: BarChart, colour):
+    def __init__(self, length: int, colour):
         self.length: int = length
+
         self.colour = colour
+
+    def set_parent(self, parent: BarChart):
         self.parent: BarChart = parent
 
     def set_colour(self, colour):
         self.colour = colour
 
     def render(self, index: int):
+
+        if not self.parent:
+            raise BarChartBarParentNotSetException("[ERRORCODE: 90a18322-2692-4600-a5b7-15124ea3c4e6] You must set the parent of this Bar Object before rendering.")
+
         self.bar: Pad = Pad(
-            self.parent.barchart_data.styling.bar_width,
+            self.parent.styling.bar_width,
             self.length,
-            relative_display_top_left_corner_coord=Coord(self.parent.original_offset.x +(self.parent.styling.bar_spacing +self.parent.styling.bar_width) * index, self.parent.bar_chart.display_height - self.length - self.parent.original_offset.y),
-            parent_pad=self.parent.bar_chart
+            relative_display_top_left_corner_coord=Coord(self.parent.original_offset.x +(self.parent.styling.bar_spacing +self.parent.styling.bar_width) * index, self.parent.get_display_height() - self.length - self.parent.original_offset.y),
+            parent_pad=self.parent.get_pad()
         )
+
+        if self.colour is None:
+            self.colour = self.parent.styling.bar_colour
 
         curses_bar_pad: window = self.bar.get_curses_pad()
         curses_bar_pad.box()
@@ -159,22 +176,41 @@ class BarChart:
         self.styling: BarChartStyling = styling
 
         self.bars: list[BarChartBar] = bars
-        self.background: BarChartBackground = BarChartBackground()
+        self.background: BarChartBackground = BarChartBackground(self.styling.background_colour)
 
         self.original_offset: Coord = original_offset
         self.bar_chart_position: Coord = bar_chart_position
 
+        self._set_parents()
+
+
+
+    def _set_parents(self):
+        
+        for bar in self.bars:
+            bar.set_parent(self)
+
+        self.background.set_parent(self)
+
+    def get_display_height(self) -> int:
+        return max([bar.length for bar in self.bars])+self.original_offset.y+1
+
+    def get_pad(self):
+        if not getattr(self, "bar_chart", None):
+            self.bar_chart: Pad = Pad(
+                self.original_offset.x + (self.styling.bar_spacing +self.styling.bar_width) * len(self.bars), 
+                self.get_display_height(),
+                relative_display_top_left_corner_coord=self.bar_chart_position
+            )
+
+        return self.bar_chart
     def render(self):
         
-        self.bar_chart: Pad = Pad(
-            self.original_offset.x + (self.barchart_data.styling.bar_spacing +self.barchart_data.styling.bar_width) * len(self.bars), 
-            max(self.bars)+self.original_offset.y+1,
-            relative_display_top_left_corner_coord=self.bar_chart_position
-        )
+        self.get_pad()
 
-        self.background.render(pad=self.bar_chart, default_colour=self.barchart_data.styling.background_colour)
+        self.background.render()
         for index, bar in enumerate(self.bars):
-            bar.render(index, default_colour = self.barchart_data.styling.bar_colour)
+            bar.render(index)
 
     @staticmethod
     def create_barchart(barchart_data: dict) -> BarChart:
@@ -229,13 +265,10 @@ class BarChart:
 class BarChartBuilder:
 
     def __init__(self):
-        self.bars: list[BarChartBar] = dict()
+        self.bars: list[BarChartBar] = []
 
     def add_bar(self, length: int, colour: Any | None = None):
         self.bars.append(BarChartBar(length=length, colour=colour))
-
-    def set_background(self, colour: Any | None = None):
-        self.background_colour: BarChartBackground = BarChartBackground(colour)
 
     def set_position_in_display(self, position_in_display: Coord):
         self.position_in_display: Coord = position_in_display
@@ -243,12 +276,18 @@ class BarChartBuilder:
     def set_render_offset_within_frame(self, offset: Coord):
         self.offset: Coord = offset
 
+    def set_styling(self, styling: BarChartStyling):
+        self.styling: BarChartStyling = styling
+
     def build(self) -> BarChart:
 
-        styling: BarChartStyling = BarChartStyling(
-            bar_colour=curses.COLOR_BLUE,
-            background_colour=curses.COLOR_BLACK,
-            bar_spacing=1,
-            bar_width=1
-        )
-        return BarChart(self.bars, styling, self.offset, self.position_in_display)
+        if not getattr(self, "styling", None):
+            self.styling: BarChartStyling = BarChartStyling()
+
+        if not getattr(self, "offset", None):
+            self.offset: Coord = Coord(0,0)
+
+        if not getattr(self, "position_in_display", None):
+            self.position_in_display: Coord = Coord(0,0)
+
+        return BarChart(self.bars, self.styling, self.offset, self.position_in_display)
